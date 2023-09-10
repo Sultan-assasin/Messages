@@ -1,7 +1,7 @@
 package com.sultan.messages.Activity
 
+import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -40,18 +40,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.sultan.messages.R
-import com.sultan.messages.data.BusNumber
-import com.sultan.messages.data.DataProvider
-import com.sultan.messages.data.Message
 import com.sultan.messages.recyclerview.BusListItem
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import com.sultan.messages.viewModel.TicketsViewModel
 
 
+@SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MessageScreen() {
+fun MessageScreen(viewModel: TicketsViewModel) {
+
+    val itemList = viewModel.itemList.collectAsState(initial = emptyList())
     val systemUiController = rememberSystemUiController()
 
     if (isSystemInDarkTheme()) {
@@ -64,7 +63,8 @@ fun MessageScreen() {
         )
     }
 
-    TopAppBar(title = { Text(text = "9909") },
+    TopAppBar(
+        title = { Text(text = "9909") },
         navigationIcon = {
             Row {
                 Icon(
@@ -100,25 +100,10 @@ fun MessageScreen() {
                     tint = Color.Gray
                 )
             }
-        }, colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color.White )
+        }, colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color.White)
 
     )
-    writeMessage()
-}
 
-
-@RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun writeMessage() {
-    var isClicked by remember { mutableStateOf(false) }
-    val message = remember { mutableStateOf("") }
-
-    val currentDateTime = remember { LocalDateTime.now() }
-    val monthDay = currentDateTime.dayOfMonth
-    val monthValue = currentDateTime.monthValue
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-    val time = currentDateTime.format(timeFormatter).toString()
 
     Column(
         modifier = Modifier
@@ -146,9 +131,9 @@ fun writeMessage() {
             )
 
             TextField(
-                value = message.value,
+                value = viewModel.text.value,
                 onValueChange = {
-                    message.value = it
+                    viewModel.text.value = it
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -176,8 +161,10 @@ fun writeMessage() {
                                 .width(40.dp)
                                 .padding(end = 10.dp)
                                 .clickable {
-                                    isClicked = true
-                                    Log.d("yyyyy", isClicked.toString())
+                                    if (viewModel.text.value.isNotEmpty()) {
+                                        viewModel.insertItem()
+                                    }
+
                                 },
                             tint = Color(0xFF555555)
                         )
@@ -194,31 +181,30 @@ fun writeMessage() {
             )
 
         }
-
     }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(bottom = 75.dp, top = 60.dp)
     ) {
-        if (isClicked) {
-           // val mes = BusNumber(message.value, time,"63HH78","http://qr.tha.kz/135C1")
-            val mes = DataProvider.busList
-            LazyColumn {
-                items(mes) {
-                    BusListItem(bus = it)
-                }
+        LazyColumn {
+            items(itemList.value) { item ->
+                BusListItem(bus = item, {
+                    viewModel.ticket = it
+                    viewModel.text.value = it.number
+                },
+                    {
+                        viewModel.deleteItem(tickets = it)
+                    }
+                )
             }
-
         }
     }
-
 }
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun PrevMessageScreen() {
-    MessageScreen()
+    //MessageScreen()
 }
